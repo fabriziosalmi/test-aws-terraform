@@ -1,0 +1,70 @@
+name: Deploy Terraform to AWS
+
+on:
+  push:
+    branches:
+      - main  # Triggers the workflow on pushes to your main branch (e.g., 'main'). Adjust if you use a different branch name.
+  workflow_dispatch: # Allows manual triggering of the workflow from the GitHub Actions UI for testing or specific deployments.
+
+env:
+  TF_VAR_aws_region: ${{ secrets.AWS_REGION }}   # Sets the AWS region (e.g., 'eu-south-1') for the deployment. Managed as a GitHub secret.
+  TF_VAR_ami_id: ${{ secrets.AWS_AMI_ID }} # Sets the Amazon Linux 2 AMI ID for the EC2 instances. Managed as a GitHub secret and **must be valid for the specified AWS region**. The default is "ami-00e3619281c3422e2"
+  TF_VAR_instance_type: ${{ secrets.INSTANCE_TYPE }} # Sets the EC2 instance type (e.g., 't3.micro').  Managed as a GitHub secret. Consider larger instance types for production.
+  TF_VAR_key_name: ${{ secrets.AWS_KEY_NAME }} # Sets the name of the SSH key pair to use for EC2 instances. Managed as a GitHub secret. Leave empty if you don't need SSH access.
+  TF_VAR_db_name: ${{ secrets.DB_NAME }} # Sets the name of the MySQL database. Managed as a GitHub secret. The default is "wordpressdb"
+  TF_VAR_db_user: ${{ secrets.DB_USER }} # Sets the username for the MySQL database. Managed as a GitHub secret. The default is "wordpressuser"
+  TF_VAR_db_instance_type: ${{ secrets.DB_INSTANCE_TYPE }} # Sets the database instance type (e.g., 'db.t3.medium'). Managed as a GitHub secret. Consider larger instance types for production.
+  TF_VAR_domain_name: ${{ secrets.DOMAIN_NAME }} # Sets the full subdomain for your WordPress site (e.g., 'wordpress.aws.italiadns.net'). Managed as a GitHub secret. This must be a registered domain in Route 53 and properly delegated to AWS name servers.
+  TF_VAR_default_instance_warmup: ${{ secrets.DEFAULT_INSTANCE_WARMUP }} # Sets the time (in seconds) until the EC2 instance is considered ready after launch for Auto Scaling Group health checks. Managed as a GitHub secret. The default is 300
+  TF_VAR_estimated_instance_warmup: ${{ secrets.ESTIMATED_INSTANCE_WARMUP }} # Sets the estimated time (in seconds) until the EC2 instance is warmed up for CloudWatch Alarms. Managed as a GitHub secret. The default is 300
+  TF_VAR_allowed_inbound_cidr_blocks: ${{ secrets.ALLOWED_INBOUND_CIDR_BLOCKS }}  # Sets the list of CIDR blocks allowed to access the ALB (HTTP/HTTPS). Managed as a GitHub secret. **SHOULD BE RESTRICTED!** Consider restricting to your IP address for testing, then to a more specific range for production.
+  TF_VAR_db_allocated_storage: ${{ secrets.DB_ALLOCATED_STORAGE }} # Sets the allocated storage for the RDS instance (in GB). Managed as a GitHub secret. The default is 20
+  TF_VAR_db_skip_final_snapshot: ${{ secrets.DB_SKIP_FINAL_SNAPSHOT }} # Sets whether to skip the final snapshot when deleting the RDS instance. Managed as a GitHub secret. Set to 'false' for production to prevent data loss.
+  TF_VAR_db_backup_retention_period: ${{ secrets.DB_BACKUP_RETENTION_PERIOD }} # Sets the number of days to retain backups for the RDS instance. Managed as a GitHub secret. The default is 7
+  TF_VAR_db_performance_insights_enabled: ${{ secrets.DB_PERFORMANCE_INSIGHTS_ENABLED }} # Sets whether to enable Performance Insights for the RDS instance. Managed as a GitHub secret.
+  TF_VAR_db_performance_insights_retention_period: ${{ secrets.DB_PERFORMANCE_INSIGHTS_RETENTION_PERIOD }} # Sets the retention period (in days) for Performance Insights data. Managed as a GitHub secret. The default is 7
+  TF_VAR_db_monitoring_interval: ${{ secrets.DB_MONITORING_INTERVAL }} # Sets the interval (in seconds) for RDS Enhanced Monitoring. Valid values: 0 (disabled), 10, 30, or 60. Managed as a GitHub secret. The default is 30
+  TF_VAR_wp_admin_username: ${{ secrets.WP_ADMIN_USERNAME }} # Sets the username for the WordPress administrator account. Managed as a GitHub secret. The default is "admin".
+  TF_VAR_wp_admin_email: ${{ secrets.WP_ADMIN_EMAIL }} # Sets the email address for the WordPress administrator account. Managed as a GitHub secret. The default is "fabrizio.salmi@gmail.com". **Ensure this is a valid email address.**
+  TF_VAR_desired_capacity: ${{ secrets.DESIRED_CAPACITY }} # Sets the desired number of EC2 instances in the Auto Scaling Group. Managed as a GitHub secret. The default is 2.
+  TF_VAR_max_size: ${{ secrets.MAX_SIZE }} # Sets the maximum number of EC2 instances in the Auto Scaling Group. Managed as a GitHub secret. The default is 4.
+  TF_VAR_min_size: ${{ secrets.MIN_SIZE }} # Sets the minimum number of EC2 instances in the Auto Scaling Group. Managed as a GitHub secret. The default is 1.
+  USE_VPC_ENDPOINTS: ${{ secrets.USE_VPC_ENDPOINTS }} # Sets whether to use VPC Endpoints for SSM access (true) or rely on a NAT Gateway (false). Managed as a GitHub secret (boolean: "true" or "false").
+
+jobs:
+  deploy:
+    name: Deploy Infrastructure
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3 # Checks out your code from the repository, making it available to the workflow.
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2 # Configures AWS credentials for authenticating with AWS.
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }} # Uses the AWS access key ID stored as a GitHub secret.
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }} # Uses the AWS secret access key stored as a GitHub secret.
+          aws-region: ${{ secrets.AWS_REGION }} # Uses the AWS region stored as a GitHub secret.
+
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@v2 # Installs the specified version of Terraform.
+        with:
+          terraform_version: 1.4.0 # Specifies the Terraform version to install. Update as needed.
+
+      - name: Terraform Init
+        id: init
+        run: terraform init # Initializes the Terraform working directory, downloading necessary providers and modules.
+
+      - name: Terraform Plan
+        id: plan
+        run: terraform plan -no-color -var="use_vpc_endpoints=${{ env.USE_VPC_ENDPOINTS }}" # Generates a Terraform plan, showing the changes that will be applied.  Passes the USE_VPC_ENDPOINTS variable to conditionally configure the network.
+        continue-on-error: true # Allows the workflow to continue even if the plan fails (e.g., due to syntax errors), so the error output can be captured.
+
+      - name: Terraform Plan Output
+        if: steps.plan.outcome == 'failure' # Only runs this step if the Terraform plan failed.
+        run: echo "::error title=Terraform Plan Failed::${{ steps.plan.outputs.stdout }}" # Outputs the Terraform plan error to the GitHub Actions log.
+
+      - name: Terraform Apply
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push' && steps.plan.outcome == 'success' # Only runs the Terraform apply step on pushes to the 'main' branch, and only if the plan was successful. This prevents accidental deployments.
+        run: terraform apply -auto-approve -var="use_vpc_endpoints=${{ env.USE_VPC_ENDPOINTS }}" # Applies the Terraform configuration, creating or updating the infrastructure. -auto-approve automatically approves the changes.  Passes the USE_VPC_ENDPOINTS variable to conditionally configure the network.
