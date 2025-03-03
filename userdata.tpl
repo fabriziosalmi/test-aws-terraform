@@ -213,22 +213,10 @@ echo "$(date) - WordPress installed successfully."
 
 # Configure Apache with proper Virtual Host
 echo "$(date) - Configuring Apache..."
-VHOST_CONFIG=$(cat <<'EOF'
-<VirtualHost *:80>
-    ServerAdmin webmaster@localhost
-    DocumentRoot /var/www/html
-    ErrorLog /var/log/httpd/wordpress-error.log
-    CustomLog /var/log/httpd/wordpress-access.log combined
 
-    <Directory /var/www/html>
-        Options FollowSymLinks
-        AllowOverride All
-        Require all granted
-    </Directory>
-</VirtualHost>
-EOF
-)
-echo "$VHOST_CONFIG" > /etc/httpd/conf.d/wordpress.conf
+# Use 'cat' to read the external vhost.conf.tpl file
+cat ./vhost.conf.tpl > /etc/httpd/conf.d/wordpress.conf
+
 VHOST_CONFIG_RESULT=$?
 if [ $VHOST_CONFIG_RESULT -ne 0 ]; then
   echo "$(date) - ERROR: Failed to write Apache VirtualHost config. Exiting."
@@ -238,20 +226,8 @@ echo "$(date) - Apache VirtualHost configured."
 
 # Create .htaccess file
 echo "$(date) - Creating .htaccess file..."
-HTACCESS_CONTENT=$(cat <<'EOF'
-# BEGIN WordPress
-<IfModule mod_rewrite.c>
-RewriteEngine On
-RewriteBase /
-RewriteRule ^index\.php$ - [L]
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule . /index.php [L]
-</IfModule>
-# END WordPress
-EOF
-)
-echo "$HTACCESS_CONTENT" > /var/www/html/.htaccess
+# Use 'cat' to read the external htaccess.tpl file.  MUCH cleaner.
+cat ./htaccess.tpl > /var/www/html/.htaccess
 HTACCESS_CONTENT_RESULT=$?
 if [ $HTACCESS_CONTENT_RESULT -ne 0 ]; then
   echo "$(date) - ERROR: Failed to write .htaccess file. Exiting."

@@ -487,7 +487,7 @@ resource "aws_launch_template" "wordpress_lt" {
     secrets_wp_admin_arn   = aws_secretsmanager_secret.wp_admin_creds.arn
     secrets_db_password_arn = aws_secretsmanager_secret.db_password.arn
     db_password            = tostring(data.aws_secretsmanager_secret_version.db_password.secret_string)
-    wp_admin_creds         = tostring(data.aws_secretsmanager_secret_version.wp_admin_creds.secret_string) # Added conversion
+    wp_admin_creds         = tostring(data.aws_secretsmanager_secret_version.wp_admin_creds.secret_string)
   }))
 
   tags = {
