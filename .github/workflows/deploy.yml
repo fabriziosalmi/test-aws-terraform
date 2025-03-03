@@ -1,9 +1,9 @@
 name: Deploy Terraform to AWS
 
 on:
-  push:
-    branches:
-      - main  # Triggers the workflow on pushes to your main branch (e.g., 'main'). Adjust if you use a different branch name.
+  #push:
+  #  branches:
+  #    - main  # Triggers the workflow on pushes to your main branch (e.g., 'main'). Adjust if you use a different branch name.
   workflow_dispatch: # Allows manual triggering of the workflow from the GitHub Actions UI for testing or specific deployments.
 
 env:
