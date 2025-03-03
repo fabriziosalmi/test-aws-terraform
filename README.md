@@ -28,7 +28,6 @@ This Terraform project deploys a highly available WordPress website on AWS. It i
 *   [AWS CLI](https://aws.amazon.com/cli/) installed and configured with appropriate credentials.
 *   An AWS account.
 *   A registered domain name (e.g., `test.example.com`) managed by Route 53. You'll need the Route 53 zone ID for your domain.
-*   A key pair created in AWS for SSH access to the EC2 instances (optional, but recommended for troubleshooting).
 
 ## Getting Started
 
