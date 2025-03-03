@@ -19,8 +19,8 @@ fi
 
 echo "$(date) - SSM Agent started and enabled."
 
-# Update package list and install necessary tools
-echo "$(date) - Updating package list and installing necessary tools..."
+# Update package list
+echo "$(date) - Updating package list..."
 yum update -y
 YUM_UPDATE_RESULT=$?
 if [ $YUM_UPDATE_RESULT -ne 0 ]; then
@@ -28,7 +28,45 @@ if [ $YUM_UPDATE_RESULT -ne 0 ]; then
   exit 1
 fi
 
-yum install -y httpd php php-mysqlnd php-gd php-xml php-mbstring wget unzip jq amazon-cloudwatch-agent -y
+# **Upgrade PHP to 8.1**
+echo "$(date) - Upgrading PHP to 8.1..."
+amazon-linux-extras enable php8.1
+PHP_EXTRAS_RESULT=$?
+if [ $PHP_EXTRAS_RESULT -ne 0 ]; then
+  echo "$(date) - ERROR: amazon-linux-extras enable php8.1 failed. Exiting."
+  exit 1
+fi
+
+yum clean metadata
+YUM_CLEAN_RESULT=$?
+if [ $YUM_CLEAN_RESULT -ne 0 ]; then
+  echo "$(date) - ERROR: yum clean metadata failed.  Continuing, but this is concerning."
+fi
+
+yum install -y php php-mysqlnd php-gd php-xml php-mbstring
+YUM_PHP_INSTALL_RESULT=$?
+if [ $YUM_PHP_INSTALL_RESULT -ne 0 ]; then
+  echo "$(date) - ERROR: yum install php php-mysqlnd php-gd php-xml php-mbstring failed. Exiting."
+  exit 1
+fi
+
+echo "$(date) - PHP 8.1 installed."
+
+# Verify PHP Version
+echo "$(date) - Verifying PHP version..."
+PHP_VERSION=$(php -v | head -n 1)
+echo "$(date) - PHP Version: $PHP_VERSION"
+
+# Exit if PHP Version does not contain "PHP 8.1"
+
+if [[ ! "$PHP_VERSION" == *"PHP 8.1"* ]]; then
+  echo "$(date) - ERROR: PHP version is not 8.1.  Exiting."
+  exit 1
+fi
+
+# Install necessary tools
+echo "$(date) - Installing necessary tools..."
+yum install -y httpd wget unzip jq amazon-cloudwatch-agent -y
 YUM_INSTALL_RESULT=$?
 if [ $YUM_INSTALL_RESULT -ne 0 ]; then
   echo "$(date) - ERROR: yum install failed.  Exiting."
@@ -50,6 +88,7 @@ systemctl enable httpd
 SYSTEMCTL_APACHE_ENABLE_RESULT=$?
 if [ $SYSTEMCTL_APACHE_ENABLE_RESULT -ne 0 ]; then
   echo "$(date) - ERROR: Failed to enable Apache. Continuing, but this is concerning."
+  exit 1
 fi
 
 echo "$(date) - Apache started and enabled."
@@ -194,7 +233,7 @@ echo "$(date) - Retrieving WordPress admin credentials from Secrets Manager..."
 WP_ADMIN_CREDS='${wp_admin_creds}'
 WP_ADMIN_USER=$(echo "$WP_ADMIN_CREDS" | jq -r '.username')
 WP_ADMIN_PASSWORD=$(echo "$WP_ADMIN_CREDS" | jq -r '.password')
-WP_ADMIN_EMAIL=$(echo "$WP_ADMIN_CREDS" | jq -r '.email')
+WP_ADMIN_EMAIL=$(echo "$WP_ADMIN_EMAIL" | jq -r '.email')
 echo "$(date) - Retrieved admin credentials: user=$WP_ADMIN_USER, email=$WP_ADMIN_EMAIL"
 
 wp core install \
