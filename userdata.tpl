@@ -213,6 +213,33 @@ fi
 
 echo "$(date) - wp-config.php created."
 
+# Add the HTTPS detection code to wp-config.php
+echo "$(date) - Adding HTTPS detection code to wp-config.php"
+CONFIG_FILE="/var/www/html/wp-config.php"
+if ! grep -q "HTTP_X_FORWARDED_PROTO" "$CONFIG_FILE"; then
+  sed -i "s/\/\* That's all, stop editing! Happy blogging. \*\//$(cat <<EOF
+/**
+ * Force SSL detection when behind a proxy or load balancer.
+ */
+if ( isset( \$_SERVER['HTTP_X_FORWARDED_PROTO'] ) && \$_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https' ) {
+    \$_SERVER['HTTPS'] = 'on';
+}
+
+/**
+ * Force SSL admin
+ */
+define('FORCE_SSL_ADMIN', true);
+EOF
+)\n\/\* That's all, stop editing! Happy blogging. \*\//" "$CONFIG_FILE"
+  SED_CONFIG_RESULT=$?
+  if [ $SED_CONFIG_RESULT -ne 0 ]; then
+    echo "$(date) - ERROR: Failed to add HTTPS detection code to wp-config.php. Exiting."
+    exit 1
+  fi
+else
+    echo "$(date) - HTTPS detection code already present in wp-config.php"
+fi
+
 # Generate salts and add them to wp-config.php
 echo "$(date) - Generating salts and adding them to wp-config.php..."
 
@@ -371,14 +398,14 @@ fi
 
 echo "$(date) - Apache restarted."
 
-# Verify Apache config
-echo "$(date) - Verifying Apache Configuration..."
-apachectl configtest
-APACHE_CONFIGTEST_RESULT=$?
-if [ $APACHE_CONFIGTEST_RESULT -ne 0 ]; then
-    echo "$(date) - ERROR: Apache configuration is invalid.  Check /etc/httpd/conf* for errors. Exiting."
+# Search and replace database URLs
+echo "$(date) - Searching and replacing database URLs to enforce HTTPS..."
+wp search-replace 'http://${domain_name}' 'https://${domain_name}' --skip-columns=guid --all-tables --path='/var/www/html' --quiet --url="https://${domain_name}"
+DB_REPLACE_RESULT=$?
+if [ $DB_REPLACE_RESULT -ne 0 ]; then
+    echo "$(date) - ERROR: Database search and replace failed.  Exiting."
     exit 1
 fi
-echo "$(date) - Apache configuration is valid."
+echo "$(date) - Database URLs updated to HTTPS."
 
 echo "$(date) - Userdata script completed successfully."

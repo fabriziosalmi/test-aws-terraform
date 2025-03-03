@@ -1,4 +1,3 @@
-# vhost.conf.tpl
 <VirtualHost *:80>
     ServerName ${domain_name}
     Redirect permanent / https://${domain_name}/
@@ -16,7 +15,8 @@
     ErrorLog /var/log/httpd/error.log
     CustomLog /var/log/httpd/access.log combined
 
-    SSLEngine on
-    SSLCertificateFile /etc/pki/tls/certs/localhost.crt
-    SSLCertificateKeyFile /etc/pki/tls/private/localhost.key
+    #  If ALB handles SSL termination, these are NOT needed
+    #SSLEngine on
+    #SSLCertificateFile /etc/pki/tls/certs/localhost.crt
+    #SSLCertificateKeyFile /etc/pki/tls/private/localhost.key
 </VirtualHost>
