@@ -488,6 +488,12 @@ resource "aws_launch_template" "wordpress_lt" {
     secrets_db_password_arn = aws_secretsmanager_secret.db_password.arn
     db_password            = tostring(data.aws_secretsmanager_secret_version.db_password.secret_string)
     wp_admin_creds         = tostring(data.aws_secretsmanager_secret_version.wp_admin_creds.secret_string)
+    db_creds               = jsonencode({
+                              dbname   = aws_db_instance.default.db_name,
+                              username = aws_db_instance.default.username,
+                              password = tostring(data.aws_secretsmanager_secret_version.db_password.secret_string),
+                              host     = aws_db_instance.default.endpoint
+                            })
   }))
 
   tags = {
@@ -501,19 +507,20 @@ resource "aws_launch_template" "wordpress_lt" {
 
 # Auto Scaling Group
 resource "aws_autoscaling_group" "wordpress_asg" {
-  name                 = "wordpress-asg-${random_string.random.result}"
-  vpc_zone_identifier  = [aws_subnet.private_subnet_a.id, aws_subnet.private_subnet_b.id]
-  desired_capacity     = var.desired_capacity
-  max_size             = var.max_size
-  min_size             = var.min_size
-  health_check_type    = "ELB"
+  name                = "wordpress-asg-${random_string.random.result}"
+  max_size            = var.max_size
+  min_size            = var.min_size
+  desired_capacity    = var.desired_capacity
+  vpc_zone_identifier = [aws_subnet.private_subnet_a.id, aws_subnet.private_subnet_b.id]
+  target_group_arns   = [aws_lb_target_group.main.arn]
+  health_check_type   = "ELB"
   health_check_grace_period = var.default_instance_warmup
-  target_group_arns = [aws_lb_target_group.main.arn]
 
   launch_template {
     id      = aws_launch_template.wordpress_lt.id
-    version = "$Latest" # Or a specific version
+    version = "$Latest"
   }
+
 }
 
 # Auto Scaling Policies

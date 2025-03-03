@@ -148,3 +148,11 @@ variable "wp_admin_password" {
   sensitive   = true
   description = "The password for the WordPress administrator account.  This value will be automatically generated and stored in AWS Secrets Manager."
 }
+
+# Example terraform variable definition for credentials in JSON format
+variable "db_creds" {
+  type        = string
+  description = "JSON string containing database credentials (dbname, username, password, host)"
+  default     = ""
+  sensitive   = true
+}

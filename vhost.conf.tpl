@@ -1,12 +1,22 @@
+# vhost.conf.tpl
 <VirtualHost *:80>
-    ServerAdmin fabrizio.salmi@gmail.com
+    ServerName ${domain_name}
+    Redirect permanent / https://${domain_name}/
+</VirtualHost>
+
+<VirtualHost *:443>
+    ServerName ${domain_name}
     DocumentRoot /var/www/html
-    ErrorLog /var/log/httpd/wordpress-error.log
-    CustomLog /var/log/httpd/wordpress-access.log combined
 
     <Directory /var/www/html>
-        Options FollowSymLinks
         AllowOverride All
         Require all granted
     </Directory>
+
+    ErrorLog /var/log/httpd/error.log
+    CustomLog /var/log/httpd/access.log combined
+
+    SSLEngine on
+    SSLCertificateFile /etc/pki/tls/certs/localhost.crt
+    SSLCertificateKeyFile /etc/pki/tls/private/localhost.key
 </VirtualHost>
