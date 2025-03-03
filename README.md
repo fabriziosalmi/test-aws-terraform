@@ -1,5 +1,20 @@
 # Terraform WordPress Deployment on AWS
 
+## Table of Contents
+- [Prerequisites](#prerequisites)
+- [Getting Started](#getting-started)
+- [Important Files](#important-files)
+- [Understanding the Terraform Code](#understanding-the-terraform-code)
+- [Understanding the userdata.tpl file](#understanding-the-userdatatpl-file)
+- [Outputs](#outputs)
+- [Security Considerations](#security-considerations)
+- [Cleanup](#cleanup)
+- [Troubleshooting](#troubleshooting)
+- [Further Enhancements](#further-enhancements)
+- [Advanced Configuration Options](#advanced-configuration-options)
+- [Known Issues](#known-issues)
+- [Double-Check](#double-check)
+
 This Terraform project deploys a highly available WordPress website on AWS. It includes the following components:
 
 *   **Virtual Private Cloud (VPC):** A dedicated network for the WordPress deployment.
@@ -1077,5 +1092,8 @@ This section details some advanced configuration options that can be customized 
 *   **Database Password Rotation:** The database password is automatically generated and stored in Secrets Manager.  Implement a mechanism to automatically rotate the database password on a regular basis.
 *   **Security Group Changes Require Replacement**: Any time you change the security group rules the underlying resources will need to be recreated, which will cause downtime, so make sure your configurations are correct.
 *   **`wp-config.php` Hardcoded Paths**: The paths used in `wp-config.php` may not be compatible with all custom WordPress setups. It's possible you need to adjust them to fit your specific needs.
+
+## Double-Check
+Before deploying, please review the entire documentation to ensure that all variable values, resource configurations, and instructions remain up-to-date with the current best practices and infrastructure requirements.
 
 This documentation provides a comprehensive overview of the Terraform WordPress deployment on AWS, including prerequisites, getting started instructions, security considerations, troubleshooting tips, further enhancements, contributing guidelines, and advanced configuration options. By following these guidelines, you can successfully deploy and manage a highly available and secure WordPress website on AWS. Remember to always prioritize security best practices and regularly review and update your infrastructure to stay ahead of potential threats.
